@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import type { EventStateHost } from "../types";
 import { useEventSocket } from "../hooks/useEventSocket";
@@ -8,7 +7,6 @@ import { TimerRing } from "../components/TimerRing";
 import { ScoreTrack } from "../components/ScoreTrack";
 import { AspectMetricCard } from "../components/AspectMetricCard";
 import { DEFAULT_ASPECT_TITLES } from "../constants/aspects";
-import { InteractiveBank } from "../components/InteractiveBank";
 import { HealthCanvas, HealthCard, HealthNavBar, HealthSection } from "../ui/HealthLayout";
 import { formatScore } from "../lib/formatScore";
 
@@ -40,7 +38,7 @@ import {
   type SavedEvent,
 } from "../lib/device";
 
-type Tab = "people" | "round" | "timers" | "links" | "bank";
+type Tab = "people" | "round" | "timers" | "links";
 
 export function HostPage() {
   const [booted, setBooted] = useState(false);
@@ -93,11 +91,7 @@ export function HostPage() {
     setSpeechPart(draft?.speechPart || "0");
     setRatingMin(draft?.ratingMin ?? "0");
     setRatingPart(draft?.ratingPart || (draft?.ratingMin ? "0" : "30"));
-    setTab(
-      draft?.tab === "round" || draft?.tab === "timers" || draft?.tab === "links" || draft?.tab === "bank"
-        ? draft.tab
-        : "people",
-    );
+    setTab(draft?.tab === "round" || draft?.tab === "timers" || draft?.tab === "links" ? draft.tab : "people");
   }
 
   useEffect(() => {
@@ -227,9 +221,6 @@ export function HostPage() {
       <HealthCanvas laptop>
         <div className="mx-auto flex min-h-[80vh] w-full max-w-xl flex-col justify-center">
           <HealthNavBar eyebrow="Ведущий" title="Главный экран" />
-          <Link to="/bank" className="health-btn-secondary mb-4 self-start px-3 py-2 text-footnote">
-            Банк интерактивов
-          </Link>
           <div className="health-stack">
             <HealthCard className="space-y-3 text-left">
               <p className="text-callout text-health-muted">
@@ -281,7 +272,6 @@ export function HostPage() {
     { id: "round", label: "Раунд" },
     { id: "timers", label: "Таймеры" },
     { id: "links", label: "Ссылки" },
-    { id: "bank", label: "Банк" },
   ];
 
   return (
@@ -618,8 +608,6 @@ export function HostPage() {
             </div>
           </HealthCard>
         )}
-
-        {tab === "bank" && <InteractiveBank creds={creds} />}
       </div>
     </HealthCanvas>
   );

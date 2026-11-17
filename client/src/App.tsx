@@ -4,7 +4,6 @@ import { GuestPage } from "./pages/GuestPage";
 import { ScreenPage } from "./pages/ScreenPage";
 import { LivePage } from "./pages/LivePage";
 import { PrepPage } from "./pages/PrepPage";
-import { BankPage } from "./pages/BankPage";
 
 export default function App() {
   return (
@@ -15,7 +14,6 @@ export default function App() {
         <Route path="/screen/:eventId" element={<ScreenPage />} />
         <Route path="/live/:eventId" element={<LivePage />} />
         <Route path="/prep/:eventId" element={<PrepPage />} />
-        <Route path="/bank" element={<BankPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

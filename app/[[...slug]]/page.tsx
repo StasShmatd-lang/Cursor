@@ -25,15 +25,6 @@ function FirstPaint() {
       </HealthCanvas>
     );
   }
-  if (path.startsWith("/bank")) {
-    return (
-      <HealthCanvas laptop>
-        <div className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col justify-center">
-          <p className="text-title-2 text-health-muted">Банк интерактивов</p>
-        </div>
-      </HealthCanvas>
-    );
-  }
   if (path.startsWith("/vote") || path.startsWith("/prep")) {
     return (
       <HealthCanvas>
