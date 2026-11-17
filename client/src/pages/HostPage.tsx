@@ -416,9 +416,19 @@ export function HostPage() {
             >
               Начать раунд
             </button>
+            {ev.roundLive ? (
+              <button
+                type="button"
+                className="health-btn-secondary w-full"
+                disabled={busy}
+                onClick={() => void act("skip-speaker", {})}
+              >
+                Пропустить спикера
+              </button>
+            ) : null}
             <p className="text-footnote text-health-muted">
               Сразу идёт время выступления, и жюри уже может оценивать. Потом идёт дополнительное время на оценку.
-              Когда оно кончается, на экран выходит следующий участник из списка.
+              Когда оно кончается, на экран выходит следующий участник. «Пропустить спикера» делает это сразу.
             </p>
 
             {ev.rounds.length > 0 && (

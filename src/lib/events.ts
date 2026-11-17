@@ -541,6 +541,21 @@ export async function hostAction(id: string, hostKey: string, body: Record<strin
       beginRoundClock(ev, now);
       return null;
     }
+    if (action === "skip-speaker") {
+      const current = ev.rounds.find((round) => round.id === ev.currentRoundId);
+      if (!current || current.closed) return "Сейчас никто не выступает";
+      finishCurrentRound(ev, now);
+      const active = ev.rounds.find((round) => round.id === ev.currentRoundId);
+      if (!active || active.closed) {
+        ev.currentRoundId = null;
+        ev.ratingOpen = false;
+        clearTimer(ev.speechTimer);
+        ev.speechTimer.remainingMs = ev.speechTimer.totalSec * 1000;
+        stopTimer(ev.ratingTimer, now);
+        ev.ratingTimer.remainingMs = ev.ratingTimer.totalSec * 1000;
+      }
+      return null;
+    }
     if (action === "switch-round") {
       const roundId = clip(body.roundId, 40);
       if (!ev.rounds.some((round) => round.id === roundId)) return "Раунд не найден";
