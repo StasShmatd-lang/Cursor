@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { EventStateGuest } from "../types";
-import { getSocket } from "../socket";
 import { useEventSocket } from "../hooks/useEventSocket";
 import { TimerRing } from "../components/TimerRing";
 import { AspectVoteSection } from "../components/AspectVoteSection";
@@ -17,6 +16,10 @@ export function GuestPage() {
   const [scores, setScores] = useState<(number | null)[]>([null, null, null]);
   const [rateError, setRateError] = useState("");
   const [done, setDone] = useState(false);
+  const [voteKey] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.hash.replace(/^#/, "")).get("k") ?? "";
+  });
 
   const aspectMeta = useMemo(() => {
     const rl = ev?.roundLive;
@@ -31,32 +34,30 @@ export function GuestPage() {
 
   useEffect(() => {
     setScores([null, null, null]);
-  }, [ev?.roundLive?.id]);
-
-  useEffect(() => {
-    const socket = getSocket();
-    const onErr = (p: { message: string }) => setRateError(p.message);
-    const onOk = () => {
-      setDone(true);
-      setRateError("");
-    };
-    socket.on("rate-error", onErr);
-    socket.on("rate-success", onOk);
-    return () => {
-      socket.off("rate-error", onErr);
-      socket.off("rate-success", onOk);
-    };
-  }, []);
-
-  function submit() {
-    if (!eventId || scores.some((s) => s === null)) return;
+    if (!eventId || !ev?.roundLive?.id) return;
+    setDone(sessionStorage.getItem(`voted:${eventId}:${ev.roundLive.id}`) === "1");
     setRateError("");
-    getSocket().emit("guest:rate", {
-      eventId,
-      name,
-      company,
-      scores: scores as number[],
-    });
+  }, [eventId, ev?.roundLive?.id]);
+
+  async function submit() {
+    if (!eventId || !voteKey || scores.some((s) => s === null)) return;
+    setRateError("");
+    try {
+      const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/rate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ voteKey, name, company, scores }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setRateError(data.error ?? "Не удалось отправить");
+        return;
+      }
+      if (ev?.roundLive?.id) sessionStorage.setItem(`voted:${eventId}:${ev.roundLive.id}`, "1");
+      setDone(true);
+    } catch {
+      setRateError("Не удалось отправить");
+    }
   }
 
   if (loadError) {
@@ -64,6 +65,16 @@ export function GuestPage() {
       <HealthCanvas>
         <div className="flex min-h-[70vh] items-center justify-center text-center">
           <p className="text-title-2 text-[var(--health-pink)]">{loadError}</p>
+        </div>
+      </HealthCanvas>
+    );
+  }
+
+  if (!voteKey) {
+    return (
+      <HealthCanvas>
+        <div className="flex min-h-[70vh] items-center justify-center text-center">
+          <p className="text-title-2">Откройте ссылку или QR от ведущего</p>
         </div>
       </HealthCanvas>
     );
