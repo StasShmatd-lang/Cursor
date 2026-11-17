@@ -7,6 +7,7 @@ import { AspectVoteSection } from "../components/AspectVoteSection";
 import { ASPECT_COLORS } from "../constants/aspects";
 import { HealthCanvas, HealthCard, HealthNavBar, HealthSection } from "../ui/HealthLayout";
 import { formatScore } from "../lib/formatScore";
+import { guestProfileKey, votedKey } from "../lib/device";
 
 export function GuestPage() {
   const { pollId: eventId } = useParams<{ pollId: string }>();
@@ -20,6 +21,26 @@ export function GuestPage() {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.hash.replace(/^#/, "")).get("k") ?? "";
   });
+  const [profileFor, setProfileFor] = useState<string | null>(null);
+  if (eventId && eventId !== profileFor) {
+    setProfileFor(eventId);
+    try {
+      const saved = JSON.parse(localStorage.getItem(guestProfileKey(eventId)) ?? "null") as {
+        name?: string;
+        company?: string;
+      } | null;
+      setName(saved?.name ?? "");
+      setCompany(saved?.company ?? "");
+    } catch {
+      setName("");
+      setCompany("");
+    }
+  }
+
+  useEffect(() => {
+    if (!eventId || profileFor !== eventId) return;
+    localStorage.setItem(guestProfileKey(eventId), JSON.stringify({ name, company }));
+  }, [eventId, profileFor, name, company]);
 
   const aspectMeta = useMemo(() => {
     const rl = ev?.roundLive;
@@ -35,7 +56,7 @@ export function GuestPage() {
   useEffect(() => {
     setScores([null, null, null]);
     if (!eventId || !ev?.roundLive?.id) return;
-    setDone(sessionStorage.getItem(`voted:${eventId}:${ev.roundLive.id}`) === "1");
+    setDone(localStorage.getItem(votedKey(eventId, ev.roundLive.id)) === "1");
     setRateError("");
   }, [eventId, ev?.roundLive?.id]);
 
@@ -53,7 +74,7 @@ export function GuestPage() {
         setRateError(data.error ?? "Не удалось отправить");
         return;
       }
-      if (ev?.roundLive?.id) sessionStorage.setItem(`voted:${eventId}:${ev.roundLive.id}`, "1");
+      if (ev?.roundLive?.id) localStorage.setItem(votedKey(eventId, ev.roundLive.id), "1");
       setDone(true);
     } catch {
       setRateError("Не удалось отправить");

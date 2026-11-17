@@ -485,6 +485,16 @@ export async function hostAction(id: string, hostKey: string, body: Record<strin
       }
       return null;
     }
+    if (action === "reset-event") {
+      const fresh = blankEvent(ev.id, ev.title);
+      ev.participants = fresh.participants;
+      ev.rounds = fresh.rounds;
+      ev.currentRoundId = fresh.currentRoundId;
+      ev.ratingOpen = false;
+      ev.speechTimer = fresh.speechTimer;
+      ev.ratingTimer = fresh.ratingTimer;
+      return null;
+    }
     if (action === "speech-timer") {
       return applyTimer(ev, "speechTimer", readStep(body), now);
     }

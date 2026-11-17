@@ -10,42 +10,41 @@ import { DEFAULT_ASPECT_TITLES } from "../constants/aspects";
 import { HealthCanvas, HealthCard, HealthNavBar, HealthSection } from "../ui/HealthLayout";
 import { formatScore } from "../lib/formatScore";
 
-type Tab = "people" | "round" | "timers" | "links";
+type Draft = {
+  pName?: string;
+  pCompany?: string;
+  roundTitle?: string;
+  aspectInputs?: string[];
+  speechMin?: string;
+  ratingMin?: string;
+  tab?: string;
+};
 
-type Creds = { id: string; hostKey: string; voteKey: string };
-
-const CREDS_KEY = "voting-host";
-
-function readCreds(): Creds | null {
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const fromHash = credsFrom(hash.get("e"), hash.get("h"), hash.get("v"));
-  if (fromHash) return fromHash;
-  if (hash.has("e") || hash.has("h") || hash.has("v")) return null;
+function readDraft(eventId: string): Draft | null {
   try {
-    const parsed = JSON.parse(localStorage.getItem(CREDS_KEY) ?? "null") as Partial<Creds> | null;
-    return credsFrom(parsed?.id, parsed?.hostKey, parsed?.voteKey);
+    return JSON.parse(localStorage.getItem(hostDraftKey(eventId)) ?? "null") as Draft | null;
   } catch {
     return null;
   }
 }
+import {
+  eventUrl,
+  hashCreds,
+  hostDraftKey,
+  rememberEvent,
+  readSavedEvents,
+  type SavedEvent,
+} from "../lib/device";
 
-function credsFrom(id?: string | null, hostKey?: string | null, voteKey?: string | null): Creds | null {
-  if (!id || !hostKey || !voteKey) return null;
-  if (!/^[A-Za-z0-9_-]{8,32}$/.test(id)) return null;
-  if (!/^[A-Za-z0-9_-]{20,128}$/.test(hostKey) || !/^[A-Za-z0-9_-]{20,128}$/.test(voteKey)) return null;
-  return { id, hostKey, voteKey };
-}
-
-function saveCreds(creds: Creds) {
-  localStorage.setItem(CREDS_KEY, JSON.stringify(creds));
-  const hash = new URLSearchParams({ e: creds.id, h: creds.hostKey, v: creds.voteKey });
-  window.history.replaceState(null, "", `/#${hash.toString()}`);
-}
+type Tab = "people" | "round" | "timers" | "links";
 
 export function HostPage() {
   const [booted, setBooted] = useState(false);
-  const [creds, setCreds] = useState<Creds | null>(null);
+  const [saved, setSaved] = useState<SavedEvent[]>([]);
+  const [openedId, setOpenedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [draftFor, setDraftFor] = useState<string | null>(null);
   const [title, setTitle] = useState("День питчей");
   const [tab, setTab] = useState<Tab>("people");
   const [pName, setPName] = useState("");
@@ -58,16 +57,55 @@ export function HostPage() {
   const [hostError, setHostError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const creds = saved.find((item) => item.id === openedId) ?? null;
+
   useEffect(() => {
-    setCreds(readCreds());
+    const list = readSavedEvents();
+    setSaved(list);
+    const fromHash = hashCreds();
+    if (fromHash) {
+      rememberEvent(fromHash);
+      setSaved(readSavedEvents());
+      setOpenedId(fromHash.id);
+    }
     setBooted(true);
+    const onPop = () => setOpenedId(hashCreds()?.id ?? null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  const draftId = creds?.id ?? null;
+  if (draftId !== draftFor) {
+    setDraftFor(draftId);
+    const draft = draftId ? readDraft(draftId) : null;
+    setPName(draft?.pName ?? "");
+    setPCompany(draft?.pCompany ?? "");
+    setRoundTitle(draft?.roundTitle || "Питч");
+    setAspectInputs(draft?.aspectInputs?.length === 3 ? draft.aspectInputs : [...DEFAULT_ASPECT_TITLES]);
+    setSpeechMin(draft?.speechMin || "5");
+    setRatingMin(draft?.ratingMin || "2");
+    setTab(draft?.tab === "round" || draft?.tab === "timers" || draft?.tab === "links" ? draft.tab : "people");
+  }
+
+  useEffect(() => {
+    if (!creds || draftFor !== creds.id) return;
+    localStorage.setItem(
+      hostDraftKey(creds.id),
+      JSON.stringify({ pName, pCompany, roundTitle, aspectInputs, speechMin, ratingMin, tab }),
+    );
+  }, [draftFor, creds, pName, pCompany, roundTitle, aspectInputs, speechMin, ratingMin, tab]);
 
   const { state: ev, error: liveError, reload } = useEventSocket<EventStateHost>(
     creds?.id,
     "host",
     creds?.hostKey,
   );
+
+  useEffect(() => {
+    if (!creds || !ev || ev.title === creds.title) return;
+    rememberEvent({ ...creds, title: ev.title });
+    setSaved(readSavedEvents());
+  }, [creds, ev]);
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
@@ -81,10 +119,12 @@ export function HostPage() {
       });
       const data = (await res.json()) as { error?: string; id?: string; hostKey?: string; voteKey?: string };
       if (!res.ok) throw new Error(data.error ?? "Ошибка");
-      const next = credsFrom(data.id, data.hostKey, data.voteKey);
-      if (!next) throw new Error("Не удалось открыть событие");
-      saveCreds(next);
-      setCreds(next);
+      if (!data.id || !data.hostKey || !data.voteKey) throw new Error("Не удалось открыть событие");
+      const next = { id: data.id, hostKey: data.hostKey, voteKey: data.voteKey, title: title.trim() || "Событие" };
+      rememberEvent(next);
+      setSaved(readSavedEvents());
+      setOpenedId(next.id);
+      window.history.pushState(null, "", eventUrl(next));
     } catch (err) {
       setHostError(err instanceof Error ? err.message : "Ошибка");
     } finally {
@@ -108,14 +148,36 @@ export function HostPage() {
     }
   }
 
-  function forget() {
-    localStorage.removeItem(CREDS_KEY);
-    window.history.replaceState(null, "", "/");
-    setCreds(null);
+  function openSaved(event: SavedEvent) {
+    rememberEvent(event);
+    setSaved(readSavedEvents());
+    setOpenedId(event.id);
     setHostError("");
+    window.history.pushState(null, "", eventUrl(event));
   }
 
-  if (!booted || (creds && !ev && !liveError)) {
+  function goHome() {
+    setOpenedId(null);
+    setHostError("");
+    setConfirmReset(false);
+    window.history.pushState(null, "", "/");
+  }
+
+  async function resetEvent() {
+    const ok = await act("reset-event", {});
+    if (!ok || !creds) return;
+    localStorage.removeItem(hostDraftKey(creds.id));
+    setPName("");
+    setPCompany("");
+    setRoundTitle("Питч");
+    setAspectInputs([...DEFAULT_ASPECT_TITLES]);
+    setSpeechMin("5");
+    setRatingMin("2");
+    setTab("people");
+    setConfirmReset(false);
+  }
+
+  if (!booted || (openedId && !ev && !liveError)) {
     return (
       <HealthCanvas laptop>
         <div className="flex min-h-[70vh] items-center justify-center">
@@ -125,27 +187,45 @@ export function HostPage() {
     );
   }
 
-  if (!creds || !ev) {
+  if (!openedId || !creds || !ev) {
     return (
       <HealthCanvas laptop>
-        <div className="flex min-h-[80vh] flex-col justify-center max-w-xl mx-auto">
-          <form onSubmit={createEvent} className="health-stack">
-            <HealthNavBar eyebrow="Старт" title="Новое событие" />
-            <HealthCard className="space-y-5">
+        <div className="mx-auto flex min-h-[80vh] w-full max-w-xl flex-col justify-center">
+          <HealthNavBar eyebrow="Ведущий" title="Главный экран" />
+          <div className="health-stack">
+            <HealthCard className="space-y-3 text-left">
               <p className="text-callout text-health-muted">
-                Управление с телефона или ноутбука. Ссылки жюри и зала появятся после создания.
+                На этом телефоне события остаются. Можно выйти и открыть снова. На другом телефоне список свой.
               </p>
-              <HealthSection label="Название">
-                <input className="health-input" value={title} onChange={(e) => setTitle(e.target.value)} />
-              </HealthSection>
+              {saved.length === 0 ? (
+                <p className="text-subhead text-health-muted">Пока нет сохранённых событий</p>
+              ) : (
+                saved.map((event) => (
+                  <button
+                    key={event.id}
+                    type="button"
+                    className="health-btn"
+                    onClick={() => openSaved(event)}
+                  >
+                    Открыть «{event.title}»
+                  </button>
+                ))
+              )}
               {(hostError || liveError) && (
                 <p className="text-footnote font-medium text-[var(--health-pink)]">{hostError || liveError}</p>
               )}
-              <button type="submit" className="health-btn" disabled={creating}>
-                Создать
-              </button>
             </HealthCard>
-          </form>
+            <form onSubmit={createEvent} className="health-stack">
+              <HealthCard className="space-y-5">
+                <HealthSection label="Новое событие">
+                  <input className="health-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+                </HealthSection>
+                <button type="submit" className="health-btn" disabled={creating}>
+                  Создать
+                </button>
+              </HealthCard>
+            </form>
+          </div>
         </div>
       </HealthCanvas>
     );
@@ -167,6 +247,9 @@ export function HostPage() {
   return (
     <HealthCanvas laptop>
       <div className="health-laptop-center">
+        <button type="button" className="health-btn-secondary mb-4 self-start px-3 py-2 text-footnote" onClick={goHome}>
+          На главный
+        </button>
         <div className="w-full max-w-5xl text-center lg:text-left">
           <HealthNavBar eyebrow="Ведущий" title={ev.title} />
         </div>
@@ -435,11 +518,25 @@ export function HostPage() {
               <p className="health-section-label mb-2">Ссылка ведущего</p>
               <p className="text-footnote break-all text-health-muted">{hostUrl}</p>
               <p className="text-footnote mt-2 text-health-muted">
-                Сохраните её себе. В зал и жюри её не отправляйте.
+                Эту ссылку можно открывать снова. «На главный» не стирает имена. В зал и жюри её не отправляйте.
               </p>
-              <button type="button" className="health-btn-secondary mt-4" onClick={forget}>
-                Новое событие
-              </button>
+              {confirmReset ? (
+                <div className="mt-4 space-y-3">
+                  <p className="text-footnote text-health-muted">
+                    Имена, раунды и оценки сотрутся. Ссылка ведущего останется.
+                  </p>
+                  <button type="button" className="health-btn" disabled={busy} onClick={() => void resetEvent()}>
+                    Да, сбросить
+                  </button>
+                  <button type="button" className="health-btn-secondary w-full" onClick={() => setConfirmReset(false)}>
+                    Отмена
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="health-btn-secondary mt-4" onClick={() => setConfirmReset(true)}>
+                  Сбросить имена и оценки
+                </button>
+              )}
             </div>
           </HealthCard>
         )}
