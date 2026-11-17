@@ -386,6 +386,10 @@ export function HostPage() {
             >
               Начать раунд
             </button>
+            <p className="text-footnote text-health-muted">
+              Сразу идёт время выступления, и жюри уже может оценивать. Потом идёт дополнительное время на оценку.
+              Когда оно кончается, на экран выходит следующий участник из списка.
+            </p>
 
             {ev.rounds.length > 0 && (
               <div className="health-divider pt-4">
@@ -481,7 +485,13 @@ export function HostPage() {
               </div>
             </div>
             <p className="text-callout mt-6 text-center text-health-muted">
-              {ev.ratingOpen ? "Гости могут ставить оценки" : "Окно оценки закрыто"}
+              {ev.timers.speech.running
+                ? "Идёт выступление. Жюри уже может оценивать."
+                : ev.timers.rating.running
+                  ? "Дополнительное время на оценку. Жюри ещё может голосовать."
+                  : ev.ratingOpen
+                    ? "Оценка открыта, таймер на паузе."
+                    : "Окно оценки закрыто"}
             </p>
           </HealthCard>
         )}

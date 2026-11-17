@@ -129,17 +129,81 @@ function liveRemaining(timer: Timer, now: number) {
 
 function settleTimers(ev: EventRecord, now: number) {
   let changed = false;
-  for (const key of ["speechTimer", "ratingTimer"] as const) {
-    const timer = ev[key];
-    if (timer.running && timer.startedAt && liveRemaining(timer, now) <= 0) {
-      timer.remainingMs = 0;
-      timer.running = false;
-      timer.startedAt = null;
-      if (key === "ratingTimer") ev.ratingOpen = false;
-      changed = true;
+  if (timerFinished(ev.speechTimer, now)) {
+    const overdue = Math.max(0, now - (ev.speechTimer.startedAt ?? now) - ev.speechTimer.remainingMs);
+    clearTimer(ev.speechTimer);
+    if (ev.currentRoundId) {
+      const budget = ev.ratingTimer.totalSec * 1000;
+      if (overdue >= budget) {
+        clearTimer(ev.ratingTimer);
+        ev.ratingOpen = false;
+        finishCurrentRound(ev, now);
+      } else {
+        ev.ratingTimer.remainingMs = budget - overdue;
+        ev.ratingTimer.running = false;
+        ev.ratingTimer.startedAt = null;
+        startTimer(ev.ratingTimer, now);
+        ev.ratingOpen = true;
+      }
     }
+    changed = true;
+  }
+  if (timerFinished(ev.ratingTimer, now)) {
+    clearTimer(ev.ratingTimer);
+    ev.ratingOpen = false;
+    finishCurrentRound(ev, now);
+    changed = true;
   }
   return changed;
+}
+
+function timerFinished(timer: Timer, now: number) {
+  return Boolean(timer.running && timer.startedAt && liveRemaining(timer, now) <= 0);
+}
+
+function clearTimer(timer: Timer) {
+  timer.remainingMs = 0;
+  timer.running = false;
+  timer.startedAt = null;
+}
+
+function beginRoundClock(ev: EventRecord, now: number) {
+  ev.ratingOpen = true;
+  ev.speechTimer.remainingMs = ev.speechTimer.totalSec * 1000;
+  ev.speechTimer.running = false;
+  ev.speechTimer.startedAt = null;
+  startTimer(ev.speechTimer, now);
+  ev.ratingTimer.remainingMs = ev.ratingTimer.totalSec * 1000;
+  ev.ratingTimer.running = false;
+  ev.ratingTimer.startedAt = null;
+}
+
+function nextUnplayed(ev: EventRecord) {
+  const current = ev.rounds.find((round) => round.id === ev.currentRoundId);
+  const start = current
+    ? ev.participants.findIndex((person) => person.id === current.participantId) + 1
+    : 0;
+  for (let i = Math.max(0, start); i < ev.participants.length; i++) {
+    const person = ev.participants[i];
+    if (!ev.rounds.some((round) => round.participantId === person.id)) return person;
+  }
+  return null;
+}
+
+function finishCurrentRound(ev: EventRecord, now: number) {
+  const current = ev.rounds.find((round) => round.id === ev.currentRoundId);
+  if (!current || current.closed) return;
+  current.closed = true;
+  const next = nextUnplayed(ev);
+  if (!next || ev.rounds.length >= MAX_ROUNDS) return;
+  const round = makeRound(
+    next.id,
+    current.title,
+    current.aspects?.map((aspect) => aspect.title),
+  );
+  ev.rounds.push(round);
+  ev.currentRoundId = round.id;
+  beginRoundClock(ev, now);
 }
 
 function stopTimer(timer: Timer, now: number) {
@@ -382,9 +446,17 @@ async function mutate(
     const ev = asRecord(row.state);
     if (!ev) return { status: 500 as const, error: "Не удалось прочитать событие" };
     const now = Date.now();
-    settleTimers(ev, now);
+    const settled = settleTimers(ev, now);
     const error = change(ev, now);
-    if (error) return { status: 400 as const, error };
+    if (error) {
+      if (settled) {
+        await q("update events set state = $2::jsonb, updated_at = now() where id = $1", [
+          id,
+          JSON.stringify(ev),
+        ]);
+      }
+      return { status: 400 as const, error };
+    }
     await q("update events set state = $2::jsonb, updated_at = now() where id = $1", [
       id,
       JSON.stringify(ev),
@@ -455,13 +527,20 @@ export async function hostAction(id: string, hostKey: string, body: Record<strin
       const participantId = clip(body.participantId, 40);
       const participant = ev.participants.find((item) => item.id === participantId);
       if (!participant) return "Выберите участника";
+      const title = clip(body.title, 80);
+      const current = ev.rounds.find((round) => round.id === ev.currentRoundId);
+      if (current && current.participantId === participantId && !current.closed) {
+        current.title = title || current.title;
+        current.aspects = normalizeAspects(body.aspects);
+        beginRoundClock(ev, now);
+        return null;
+      }
       if (ev.rounds.length >= MAX_ROUNDS) return "Слишком много раундов";
-      const round = makeRound(participantId, clip(body.title, 80), body.aspects);
+      if (current && !current.closed) current.closed = true;
+      const round = makeRound(participantId, title, body.aspects);
       ev.rounds.push(round);
       ev.currentRoundId = round.id;
-      ev.ratingOpen = false;
-      stopTimer(ev.ratingTimer, now);
-      ev.ratingTimer.remainingMs = ev.ratingTimer.totalSec * 1000;
+      beginRoundClock(ev, now);
       return null;
     }
     if (action === "switch-round") {
@@ -469,6 +548,7 @@ export async function hostAction(id: string, hostKey: string, body: Record<strin
       if (!ev.rounds.some((round) => round.id === roundId)) return "Раунд не найден";
       ev.currentRoundId = roundId;
       ev.ratingOpen = false;
+      stopTimer(ev.speechTimer, now);
       stopTimer(ev.ratingTimer, now);
       return null;
     }
@@ -512,22 +592,27 @@ function readStep(body: Record<string, unknown>) {
 function applyTimer(ev: EventRecord, key: "speechTimer" | "ratingTimer", step: string, now: number) {
   const timer = ev[key];
   if (step === "start") {
-    startTimer(timer, now);
-    if (key === "ratingTimer" && timer.running) {
-      ev.ratingOpen = true;
-      stopTimer(ev.speechTimer, now);
+    if (key === "speechTimer") {
+      stopTimer(ev.ratingTimer, now);
+      ev.ratingTimer.remainingMs = ev.ratingTimer.totalSec * 1000;
+      startTimer(ev.speechTimer, now);
+      if (ev.currentRoundId && ev.speechTimer.running) ev.ratingOpen = true;
+      return null;
     }
+    stopTimer(ev.speechTimer, now);
+    ev.speechTimer.remainingMs = 0;
+    if (liveRemaining(ev.ratingTimer, now) <= 0) ev.ratingTimer.remainingMs = ev.ratingTimer.totalSec * 1000;
+    startTimer(ev.ratingTimer, now);
+    if (ev.currentRoundId && ev.ratingTimer.running) ev.ratingOpen = true;
     return null;
   }
   if (step === "pause") {
     stopTimer(timer, now);
-    if (key === "ratingTimer") ev.ratingOpen = false;
     return null;
   }
   if (step === "reset") {
     stopTimer(timer, now);
     timer.remainingMs = timer.totalSec * 1000;
-    if (key === "ratingTimer") ev.ratingOpen = false;
     return null;
   }
   return "Неизвестное действие";
@@ -537,6 +622,8 @@ export async function guestRate(id: string, body: Record<string, unknown>) {
   const voteKey = clip(body.voteKey, 128);
   return mutate(id, voteKey, "vote", (ev) => {
     if (!ev.ratingOpen) return "Оценка пока закрыта";
+    const requestedRound = clip(body.roundId, 40);
+    if (requestedRound && requestedRound !== ev.currentRoundId) return "Этот раунд уже закончился";
     const round = ev.rounds.find((item) => item.id === ev.currentRoundId);
     if (!round) return "Раунд не выбран";
     const name = clip(body.name, 80);

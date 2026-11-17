@@ -67,7 +67,7 @@ export function GuestPage() {
       const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/rate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ voteKey, name, company, scores }),
+        body: JSON.stringify({ voteKey, name, company, scores, roundId: ev?.roundLive?.id }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
@@ -198,6 +198,13 @@ export function GuestPage() {
             </HealthCard>
           ) : (
             <HealthCard className="space-y-4">
+              <p className="text-footnote text-center text-health-muted">
+                {ev.timers.speech.running
+                  ? "Можно оценивать во время выступления"
+                  : ev.timers.rating.running
+                    ? "Дополнительное время на оценку"
+                    : "Окно оценки открыто"}
+              </p>
               {aspectMeta.map((aspect, i) => (
                 <AspectVoteSection
                   key={aspect.id}
