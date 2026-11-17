@@ -1,0 +1,316 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  /* iPhone Health — dark, high contrast */
+  --health-canvas: #000000;
+  --health-card: #1c1c1e;
+  --health-elevated: #2c2c2e;
+  --health-text: #ffffff;
+  --health-label: #ebebf5;
+  --health-muted: #8e8e93;
+  --health-separator: #38383a;
+  --health-track: #3a3a3c;
+  --health-blue: #0a84ff;
+  --health-green: #30d158;
+  --health-orange: #ff9f0a;
+  --health-pink: #ff375f;
+  --health-purple: #bf5af2;
+  --health-cyan: #64d2ff;
+  --health-lime: #bfee4c;
+  --health-radius: 20px;
+  --health-frame-max: 430px;
+  --health-space-section: 20px;
+  --health-space-card: 16px;
+  --health-card-border: rgba(255, 255, 255, 0.1);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro Rounded",
+    "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: var(--health-canvas);
+  color: var(--health-text);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" on, "lnum" on;
+  letter-spacing: -0.022em;
+}
+
+@layer components {
+  .health-canvas {
+    @apply min-h-screen w-full;
+    background: var(--health-canvas);
+  }
+
+  .health-frame {
+    @apply mx-auto w-full px-5 pb-20 pt-3;
+    max-width: var(--health-frame-max);
+    background: var(--health-canvas);
+  }
+
+  .health-hero-name {
+    @apply text-large-title;
+    color: var(--health-cyan);
+  }
+
+  .health-hero-name-warm {
+    @apply text-large-title;
+    color: var(--health-purple);
+  }
+
+  .health-hero-subtitle {
+    @apply text-title-2 font-semibold;
+    color: var(--health-orange);
+  }
+
+  .health-eyebrow-accent {
+    color: var(--health-purple);
+  }
+
+  .health-laptop-center {
+    @apply mx-auto flex w-full max-w-5xl flex-col items-center;
+  }
+
+  .health-screen-center {
+    @apply mx-auto flex w-full max-w-5xl flex-col items-center text-center;
+  }
+
+  .health-live-hero {
+    background: var(--health-card);
+    border-radius: var(--health-radius);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+    padding: 20px;
+  }
+
+  .health-frame-wide {
+    @apply mx-auto w-full max-w-6xl px-6 pb-16 pt-8 md:px-10;
+  }
+
+  .health-frame-laptop {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 20px 32px 72px;
+    background: var(--health-canvas);
+  }
+
+  .health-card {
+    background: var(--health-card);
+    border-radius: var(--health-radius);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+  }
+
+  .health-card-pad {
+    @apply health-card p-4 md:p-5;
+  }
+
+  .health-card-inset {
+    border-radius: 12px;
+    background: var(--health-elevated);
+    padding: 12px;
+  }
+
+  .health-stack > * + * {
+    margin-top: var(--health-space-section);
+  }
+
+  .text-large-title {
+    @apply text-[34px] font-bold leading-[41px] tracking-[-0.4px];
+    color: var(--health-text);
+  }
+
+  .text-title-1 {
+    @apply text-[28px] font-bold leading-[34px] tracking-[-0.35px];
+    color: var(--health-text);
+  }
+
+  .text-title-2 {
+    @apply text-[22px] font-bold leading-[28px] tracking-[-0.26px];
+    color: var(--health-text);
+  }
+
+  .text-title-3 {
+    @apply text-[20px] font-semibold leading-[25px] tracking-[-0.24px];
+    color: var(--health-text);
+  }
+
+  .text-headline {
+    @apply text-[17px] font-semibold leading-[22px] tracking-[-0.41px];
+    color: var(--health-text);
+  }
+
+  .text-body {
+    @apply text-[17px] font-normal leading-[22px] tracking-[-0.41px];
+    color: var(--health-text);
+  }
+
+  .text-callout {
+    @apply text-[16px] font-normal leading-[21px] tracking-[-0.31px];
+    color: var(--health-label);
+    opacity: 0.92;
+  }
+
+  .text-subhead {
+    @apply text-[15px] font-normal leading-[20px] tracking-[-0.23px];
+    color: var(--health-label);
+    opacity: 0.85;
+  }
+
+  .text-footnote {
+    @apply text-[13px] font-normal leading-[18px] tracking-[-0.08px];
+    color: var(--health-muted);
+  }
+
+  .text-caption {
+    @apply text-[12px] font-normal leading-[16px];
+    color: var(--health-muted);
+  }
+
+  .text-metric-xl {
+    @apply text-[64px] font-bold leading-none tracking-[-0.03em] tabular-nums;
+    color: var(--health-text);
+  }
+
+  .text-metric-lg {
+    @apply text-[48px] font-bold leading-none tracking-[-0.03em] tabular-nums;
+    color: var(--health-text);
+  }
+
+  .text-metric-md {
+    @apply text-[34px] font-bold leading-none tracking-tight tabular-nums;
+    color: var(--health-text);
+  }
+
+  .health-section-label {
+    @apply text-footnote mb-1.5 px-1 font-semibold uppercase tracking-[0.06em];
+    color: var(--health-lime);
+  }
+
+  .health-nav-title {
+    @apply text-footnote px-1 pb-2 font-semibold uppercase tracking-[0.08em];
+    color: var(--health-purple);
+  }
+
+  .health-metric-accent {
+    color: var(--health-lime);
+  }
+
+  .health-btn {
+    @apply inline-flex w-full items-center justify-center rounded-[14px] px-5 py-3.5 text-headline font-semibold text-white transition active:scale-[0.99] active:opacity-90 disabled:pointer-events-none disabled:opacity-40;
+    background: var(--health-blue);
+  }
+
+  .health-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-[14px] px-4 py-3 text-subhead font-semibold transition active:opacity-75;
+    background: var(--health-elevated);
+    color: var(--health-text);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+  }
+
+  .health-input,
+  .health-select {
+    @apply w-full rounded-[12px] px-4 py-3.5 text-body focus:outline-none;
+    background: var(--health-elevated);
+    color: var(--health-text);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+  }
+
+  .health-input::placeholder {
+    color: var(--health-muted);
+  }
+
+  .health-input:focus,
+  .health-select:focus {
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border), 0 0 0 2px rgba(10, 132, 255, 0.45);
+  }
+
+  .health-segment {
+    @apply flex gap-2 overflow-x-auto pb-0.5;
+  }
+
+  .health-segment-btn {
+    @apply shrink-0 rounded-full px-4 py-2 text-subhead font-semibold transition;
+  }
+
+  .health-segment-btn-active {
+    background: var(--health-text);
+    color: #000000;
+  }
+
+  .health-segment-btn-idle {
+    background: var(--health-elevated);
+    color: var(--health-label);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+  }
+
+  .health-score-chip {
+    @apply rounded-[12px] py-3.5 text-headline font-semibold tabular-nums transition;
+  }
+
+  .health-score-chip-active {
+    @apply text-white;
+    background: var(--health-blue);
+  }
+
+  .health-score-chip-idle {
+    background: var(--health-elevated);
+    color: var(--health-text);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+  }
+
+  .health-pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-caption font-semibold;
+    background: var(--health-elevated);
+    color: var(--health-green);
+    box-shadow: inset 0 0 0 0.5px var(--health-card-border);
+  }
+
+  .health-divider {
+    border-top: 0.5px solid var(--health-separator);
+  }
+
+  .health-brand-footer {
+    border-top: 0.5px solid var(--health-separator);
+  }
+
+  .health-brand-footer-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .health-brand-footer-link:hover .health-brand-link {
+    color: var(--health-label);
+    text-decoration: underline;
+  }
+
+  .health-brand-footer-link:focus-visible {
+    outline: 2px solid var(--health-blue);
+    outline-offset: 4px;
+    border-radius: 8px;
+  }
+
+  .health-brand-logo {
+    height: 2.25rem;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.98;
+  }
+
+  .health-brand-link {
+    color: var(--health-muted);
+    text-decoration: none;
+  }
+
+}
