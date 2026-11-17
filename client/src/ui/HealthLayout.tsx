@@ -5,11 +5,21 @@ export function HealthCanvas({
   children,
   wide,
   laptop,
+  stage,
 }: {
   children: ReactNode;
   wide?: boolean;
   laptop?: boolean;
+  stage?: boolean;
 }) {
+  if (stage) {
+    return (
+      <div className="health-canvas health-canvas-stage font-system text-health-text">
+        <div className="cast-stage-main">{children}</div>
+        <BrandFooter />
+      </div>
+    );
+  }
   const frameClass = laptop
     ? "health-frame-laptop"
     : wide

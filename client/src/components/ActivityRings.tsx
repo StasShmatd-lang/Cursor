@@ -65,9 +65,6 @@ function ActivityRingArc({
         strokeDasharray={c}
         strokeDashoffset={offset}
         className="transition-[stroke-dashoffset] duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-        style={{
-          filter: pct > 0 ? `drop-shadow(0 0 12px ${color}66)` : undefined,
-        }}
       />
     </g>
   );

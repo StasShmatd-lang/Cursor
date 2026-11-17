@@ -313,68 +313,192 @@ body {
     text-decoration: none;
   }
 
-  .cast-page {
+  .health-canvas-stage {
     display: flex;
-    min-height: calc(100vh - 8rem);
+    height: 100dvh;
+    max-height: 100dvh;
     flex-direction: column;
-    gap: 1.25rem;
+    overflow: hidden;
+  }
+
+  .health-canvas-stage .health-brand-footer {
+    margin-top: 0;
+    flex: none;
+    padding: 0.2rem 0 0.35rem;
+  }
+
+  .health-canvas-stage .health-brand-logo {
+    height: 1.1rem;
+  }
+
+  .cast-stage-main {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 0.75rem 1.25rem 0;
+  }
+
+  .cast-fit {
+    display: grid;
+    min-height: 0;
+    flex: 1;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.65rem;
   }
 
   .cast-head {
-    display: grid;
+    display: flex;
+    min-width: 0;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 1rem;
-    align-items: end;
+  }
+
+  .cast-name {
+    overflow: hidden;
+    font-size: clamp(1.55rem, 4.4vh, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--health-cyan);
   }
 
   .cast-clock {
     font-variant-numeric: tabular-nums;
     font-weight: 650;
     letter-spacing: -0.04em;
-    line-height: 0.9;
-    font-size: clamp(4.5rem, 12vw, 7.5rem);
+    line-height: 0.85;
+    font-size: clamp(2.2rem, 7vh, 4.25rem);
   }
 
   .cast-body {
     display: grid;
-    gap: 1rem;
-    align-items: start;
+    min-height: 0;
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+
+  .cast-body-ring {
+    grid-template-columns: 232px minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+
+  .cast-panel {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .cast-panel-body {
+    min-height: 0;
+    flex: 1;
+  }
+
+  .cast-top-list,
+  .cast-jury {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .cast-top-list {
+    display: grid;
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 0.15rem;
   }
 
   .cast-jury {
     display: grid;
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.25rem), 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 0.35rem;
   }
 
-  .cast-jury-few {
-    grid-template-columns: 1fr;
+  .cast-row,
+  .cast-cell {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .cast-jury-mid {
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  .cast-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
   }
 
-  .cast-jury-many {
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-    gap: 0.45rem;
-  }
-
-  .cast-top-list {
+  .cast-cell {
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    justify-content: center;
+    padding: 0.15rem 0.55rem;
+  }
+
+  .cast-person {
+    overflow: hidden;
+    font-size: clamp(0.85rem, 2.3vh, 1.35rem);
+    font-weight: 650;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--health-text);
+  }
+
+  .cast-rank {
+    width: 1.4rem;
+    flex: none;
+    text-align: right;
+    font-size: clamp(0.75rem, 2vh, 1.1rem);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--health-muted);
+  }
+
+  .cast-score {
+    flex: none;
+    font-size: clamp(0.85rem, 2.2vh, 1.35rem);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--health-lime);
+  }
+
+  .cast-meta {
+    overflow: hidden;
+    font-size: clamp(0.7rem, 1.6vh, 0.85rem);
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--health-muted);
+  }
+
+  .cast-now {
+    color: var(--health-orange);
+    font-weight: 600;
+  }
+
+  .cast-ring-slot {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0.75rem;
   }
 }
 
-@media (min-width: 900px) {
-  .cast-head {
-    grid-template-columns: minmax(0, 1fr) auto;
+@media (max-width: 860px) {
+  .cast-body,
+  .cast-body-ring {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .cast-body {
-    grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.25fr);
-  }
-
-  .cast-jury-few {
-    grid-template-columns: 1fr;
+  .cast-ring-slot {
+    display: none;
   }
 }
