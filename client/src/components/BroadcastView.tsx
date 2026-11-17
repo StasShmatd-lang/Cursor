@@ -1,6 +1,10 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { EventStateScreen, JuryRatingRow, LeaderboardRow } from "../types";
 import { ActivityRings, activityRingsFromAspects } from "./ActivityRings";
 import { formatScore } from "../lib/formatScore";
+
+const FRAME = 44;
+const GAP = 8;
 
 function clock(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -17,6 +21,24 @@ function activeClock(ev: EventStateScreen) {
     return { label: "Оценка", ms: rating.remainingMs, accent: "var(--health-lime)" };
   }
   return { label: "Пауза", ms: speech.remainingMs, accent: "var(--health-muted)" };
+}
+
+function useCapacity(mode: "stack" | "grid") {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const measure = () => setBox({ width: node.clientWidth, height: node.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const columns =
+    mode === "stack" || box.width <= 0 ? 1 : Math.max(1, Math.floor((box.width + GAP) / (148 + GAP)));
+  const rows = box.height <= 0 ? 12 : Math.max(1, Math.floor((box.height + GAP) / (FRAME + GAP)));
+  return { ref, columns, rows, capacity: columns * rows };
 }
 
 export function BroadcastView({ ev, ring }: { ev: EventStateScreen; ring?: boolean }) {
@@ -49,15 +71,8 @@ export function BroadcastView({ ev, ring }: { ev: EventStateScreen; ring?: boole
       <div className={showRing ? "cast-body cast-body-ring" : "cast-body"}>
         {showRing ? (
           <section className="cast-ring-slot health-card">
-            <ActivityRings
-              size={168}
-              rings={rings}
-              center={
-                <p className="text-title-1 tabular-nums" style={{ color: "var(--health-lime)" }}>
-                  {ev.roundLive ? formatScore(ev.roundLive.average) : "—"}
-                </p>
-              }
-            />
+            <ActivityRings size={148} rings={rings} />
+            <p className="cast-ring-score">{ev.roundLive ? formatScore(ev.roundLive.average) : "—"}</p>
           </section>
         ) : null}
         <TopList rows={ev.leaderboard} currentId={ev.roundLive?.participantId ?? null} />
@@ -67,59 +82,86 @@ export function BroadcastView({ ev, ring }: { ev: EventStateScreen; ring?: boole
   );
 }
 
+function FrameList<T>({
+  mode,
+  items,
+  render,
+}: {
+  mode: "stack" | "grid";
+  items: T[];
+  render: (item: T) => ReactNode;
+}) {
+  const { ref, columns, rows, capacity } = useCapacity(mode);
+  const [open, setOpen] = useState(false);
+  const overflow = items.length > capacity;
+  const hiddenSlots = rows <= 1 ? Math.max(1, columns - 1) : (rows - 1) * columns;
+  const visible = open || !overflow ? items.length : hiddenSlots;
+  const className = `${mode === "grid" ? "cast-jury" : "cast-top-list"} cast-panel-body${open ? " is-open" : ""}`;
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={mode === "grid" ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` } : undefined}
+    >
+      {items.slice(0, visible).map(render)}
+      {overflow ? (
+        <button type="button" className="cast-frame cast-more" onClick={() => setOpen((value) => !value)}>
+          {open ? "свернуть" : "···"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function TopList({ rows, currentId }: { rows: LeaderboardRow[]; currentId: string | null }) {
-  const roomy = rows.length > 0 && rows.length <= 6;
   return (
     <section className="cast-panel health-card-pad">
-      <p className="health-section-label mb-2 shrink-0">Топ участников</p>
+      <div className="cast-panel-label">
+        <p className="health-section-label">Топ участников</p>
+        <p className="text-footnote tabular-nums text-health-muted">{rows.length}</p>
+      </div>
       {rows.length === 0 ? (
         <p className="text-footnote text-health-muted">Имена появятся, когда ведущий добавит участников</p>
       ) : (
-        <ol className="cast-panel-body cast-top-list">
-          {rows.map((row) => (
-            <li key={row.id} className="cast-row">
+        <FrameList
+          mode="stack"
+          items={rows}
+          render={(row) => (
+            <div key={row.id} className="cast-frame">
               <span className="cast-rank">{row.rank}</span>
-              <div className="min-w-0 flex-1">
-                <p className="cast-person text-health-text">
-                  {row.name}
-                  {row.id === currentId ? <span className="cast-now"> сейчас</span> : null}
-                </p>
-                {roomy && row.company ? <p className="cast-meta">{row.company}</p> : null}
-              </div>
+              <p className="cast-person min-w-0 flex-1">
+                {row.name}
+                {row.id === currentId ? <span className="cast-now"> сейчас</span> : null}
+              </p>
               <span className="cast-score">{row.totalScore > 0 ? formatScore(row.totalScore) : "—"}</span>
-            </li>
-          ))}
-        </ol>
+            </div>
+          )}
+        />
       )}
     </section>
   );
 }
 
 function JuryBoard({ rows }: { rows: JuryRatingRow[] }) {
-  const roomy = rows.length > 0 && rows.length <= 4;
   return (
     <section className="cast-panel health-card-pad">
-      <div className="mb-2 flex shrink-0 items-baseline justify-between gap-3">
+      <div className="cast-panel-label">
         <p className="health-section-label">Проголосовали</p>
         <p className="text-footnote tabular-nums text-health-muted">{rows.length}</p>
       </div>
       {rows.length === 0 ? (
         <p className="text-footnote text-health-muted">Имена появятся, когда жюри отправит оценки</p>
       ) : (
-        <ul className="cast-panel-body cast-jury">
-          {rows.map((row) => (
-            <li key={`${row.name}-${row.company}`} className="cast-cell health-card-inset">
-              <p className="cast-person text-health-text">{row.name}</p>
-              {roomy && row.company ? <p className="cast-meta">{row.company}</p> : null}
-              <p className="cast-score">{formatScore(row.total)}</p>
-              {roomy ? (
-                <p className="cast-meta">
-                  {row.perAspect.map((aspect) => `${aspect.title} ${formatScore(aspect.score)}`).join(" · ")}
-                </p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <FrameList
+          mode="grid"
+          items={rows}
+          render={(row) => (
+            <div key={`${row.name}-${row.company}`} className="cast-frame">
+              <p className="cast-person min-w-0 flex-1">{row.name}</p>
+              <span className="cast-score">{formatScore(row.total)}</span>
+            </div>
+          )}
+        />
       )}
     </section>
   );
