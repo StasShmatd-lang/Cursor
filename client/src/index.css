@@ -313,4 +313,68 @@ body {
     text-decoration: none;
   }
 
+  .cast-page {
+    display: flex;
+    min-height: calc(100vh - 8rem);
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .cast-head {
+    display: grid;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .cast-clock {
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    font-size: clamp(4.5rem, 12vw, 7.5rem);
+  }
+
+  .cast-body {
+    display: grid;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .cast-jury {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .cast-jury-few {
+    grid-template-columns: 1fr;
+  }
+
+  .cast-jury-mid {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  }
+
+  .cast-jury-many {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 0.45rem;
+  }
+
+  .cast-top-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .cast-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cast-body {
+    grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.25fr);
+  }
+
+  .cast-jury-few {
+    grid-template-columns: 1fr;
+  }
 }

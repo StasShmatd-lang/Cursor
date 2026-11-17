@@ -16,7 +16,9 @@ type Draft = {
   roundTitle?: string;
   aspectInputs?: string[];
   speechMin?: string;
+  speechPart?: string;
   ratingMin?: string;
+  ratingPart?: string;
   tab?: string;
 };
 
@@ -53,7 +55,10 @@ export function HostPage() {
   const [aspectInputs, setAspectInputs] = useState<string[]>([...DEFAULT_ASPECT_TITLES]);
   const [selectedParticipant, setSelectedParticipant] = useState("");
   const [speechMin, setSpeechMin] = useState("5");
-  const [ratingMin, setRatingMin] = useState("2");
+  const [speechPart, setSpeechPart] = useState("0");
+  const [ratingMin, setRatingMin] = useState("0");
+  const [ratingPart, setRatingPart] = useState("30");
+  const [copied, setCopied] = useState("");
   const [hostError, setHostError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -83,7 +88,9 @@ export function HostPage() {
     setRoundTitle(draft?.roundTitle || "Питч");
     setAspectInputs(draft?.aspectInputs?.length === 3 ? draft.aspectInputs : [...DEFAULT_ASPECT_TITLES]);
     setSpeechMin(draft?.speechMin || "5");
-    setRatingMin(draft?.ratingMin || "2");
+    setSpeechPart(draft?.speechPart || "0");
+    setRatingMin(draft?.ratingMin ?? "0");
+    setRatingPart(draft?.ratingPart || (draft?.ratingMin ? "0" : "30"));
     setTab(draft?.tab === "round" || draft?.tab === "timers" || draft?.tab === "links" ? draft.tab : "people");
   }
 
@@ -91,9 +98,9 @@ export function HostPage() {
     if (!creds || draftFor !== creds.id) return;
     localStorage.setItem(
       hostDraftKey(creds.id),
-      JSON.stringify({ pName, pCompany, roundTitle, aspectInputs, speechMin, ratingMin, tab }),
+      JSON.stringify({ pName, pCompany, roundTitle, aspectInputs, speechMin, speechPart, ratingMin, ratingPart, tab }),
     );
-  }, [draftFor, creds, pName, pCompany, roundTitle, aspectInputs, speechMin, ratingMin, tab]);
+  }, [draftFor, creds, pName, pCompany, roundTitle, aspectInputs, speechMin, speechPart, ratingMin, ratingPart, tab]);
 
   const { state: ev, error: liveError, reload } = useEventSocket<EventStateHost>(
     creds?.id,
@@ -156,6 +163,26 @@ export function HostPage() {
     window.history.pushState(null, "", eventUrl(event));
   }
 
+  async function copyLink(key: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = value;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+    setCopied(key);
+  }
+
+  function durationSeconds(minutes: string, seconds: string) {
+    const wholeMinutes = Math.max(0, Math.floor(Number(minutes) || 0));
+    const wholeSeconds = Math.max(0, Math.min(59, Math.floor(Number(seconds) || 0)));
+    return wholeMinutes * 60 + wholeSeconds;
+  }
+
   function goHome() {
     setOpenedId(null);
     setHostError("");
@@ -172,7 +199,9 @@ export function HostPage() {
     setRoundTitle("Питч");
     setAspectInputs([...DEFAULT_ASPECT_TITLES]);
     setSpeechMin("5");
-    setRatingMin("2");
+    setSpeechPart("0");
+    setRatingMin("0");
+    setRatingPart("30");
     setTab("people");
     setConfirmReset(false);
   }
@@ -234,6 +263,7 @@ export function HostPage() {
   const origin = window.location.origin;
   const guestUrl = `${origin}/vote/${ev.id}#k=${encodeURIComponent(creds.voteKey)}`;
   const screenUrl = `${origin}/screen/${ev.id}`;
+  const liveUrl = `${origin}/live/${ev.id}`;
   const prepUrl = `${origin}/prep/${ev.id}`;
   const hostUrl = `${origin}/#e=${encodeURIComponent(creds.id)}&h=${encodeURIComponent(creds.hostKey)}&v=${encodeURIComponent(creds.voteKey)}`;
 
@@ -422,35 +452,40 @@ export function HostPage() {
 
         {tab === "timers" && (
           <HealthCard className="w-full max-w-3xl">
-            <p className="health-section-label mb-4">Длительность (мин)</p>
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <label className="text-[13px] text-health-muted">
-                Выступление
-                <input
-                  className="health-input mt-1"
-                  value={speechMin}
-                  onChange={(e) => setSpeechMin(e.target.value)}
-                />
-              </label>
-              <label className="text-[13px] text-health-muted">
-                Оценка
-                <input
-                  className="health-input mt-1"
-                  value={ratingMin}
-                  onChange={(e) => setRatingMin(e.target.value)}
-                />
-              </label>
+            <p className="health-section-label mb-4">Длительность</p>
+            <div className="mb-4 grid gap-4 sm:grid-cols-2">
+              <DurationFields
+                label="Выступление"
+                minutes={speechMin}
+                seconds={speechPart}
+                onMinutes={setSpeechMin}
+                onSeconds={setSpeechPart}
+              />
+              <DurationFields
+                label="Оценка"
+                minutes={ratingMin}
+                seconds={ratingPart}
+                onMinutes={setRatingMin}
+                onSeconds={setRatingPart}
+              />
             </div>
+            <p className="text-footnote mb-4 text-health-muted">
+              Сейчас выступление {clockLabel(ev.timers.speech.totalSec)}, оценка {clockLabel(ev.timers.rating.totalSec)}.
+              Оценку можно поставить короче минуты.
+            </p>
             <button
               type="button"
               className="health-btn-secondary mb-6 w-full"
               disabled={busy}
-              onClick={() =>
-                void act("timer-config", {
-                  speechSec: Number(speechMin) * 60,
-                  ratingSec: Number(ratingMin) * 60,
-                })
-              }
+              onClick={() => {
+                const speechSec = durationSeconds(speechMin, speechPart);
+                const ratingSec = durationSeconds(ratingMin, ratingPart);
+                if (speechSec < 1 || ratingSec < 1) {
+                  setHostError("Укажите время больше нуля");
+                  return;
+                }
+                void act("timer-config", { speechSec, ratingSec });
+              }}
             >
               Применить
             </button>
@@ -511,6 +546,19 @@ export function HostPage() {
                 />
               </div>
               <p className="text-footnote mt-4 break-all text-health-muted">{guestUrl}</p>
+              <button type="button" className="health-btn mt-4" onClick={() => void copyLink("guest", guestUrl)}>
+                {copied === "guest" ? "Ссылка скопирована" : "Скопировать ссылку жюри"}
+              </button>
+            </div>
+            <div className="health-divider pt-6 text-left">
+              <p className="health-section-label mb-2">Трансляция</p>
+              <p className="text-subhead break-all font-medium text-health-text">{liveUrl}</p>
+              <p className="text-footnote mt-2 text-health-muted">
+                Основной экран: топ участников, время и имена жюри. На проектор или в эфир.
+              </p>
+              <button type="button" className="health-btn-secondary mt-3" onClick={() => void copyLink("live", liveUrl)}>
+                {copied === "live" ? "Ссылка скопирована" : "Скопировать трансляцию"}
+              </button>
             </div>
             <div className="health-divider pt-6 text-left">
               <p className="health-section-label mb-2">Экран зала</p>
@@ -552,6 +600,42 @@ export function HostPage() {
         )}
       </div>
     </HealthCanvas>
+  );
+}
+
+function clockLabel(totalSec: number) {
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function DurationFields({
+  label,
+  minutes,
+  seconds,
+  onMinutes,
+  onSeconds,
+}: {
+  label: string;
+  minutes: string;
+  seconds: string;
+  onMinutes: (value: string) => void;
+  onSeconds: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-[13px] text-health-muted">{label}</p>
+      <div className="mt-1 grid grid-cols-2 gap-2">
+        <label className="text-footnote text-health-muted">
+          мин
+          <input className="health-input mt-1" inputMode="numeric" value={minutes} onChange={(e) => onMinutes(e.target.value)} />
+        </label>
+        <label className="text-footnote text-health-muted">
+          сек
+          <input className="health-input mt-1" inputMode="numeric" value={seconds} onChange={(e) => onSeconds(e.target.value)} />
+        </label>
+      </div>
+    </div>
   );
 }
 

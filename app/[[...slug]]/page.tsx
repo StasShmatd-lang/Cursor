@@ -7,6 +7,15 @@ import { HealthCanvas, HealthCard, HealthNavBar, HealthSection } from "../../cli
 
 function FirstPaint() {
   const path = usePathname() ?? "/";
+  if (path.startsWith("/live")) {
+    return (
+      <HealthCanvas wide>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <p className="text-title-2 text-health-muted">Трансляция</p>
+        </div>
+      </HealthCanvas>
+    );
+  }
   if (path.startsWith("/screen")) {
     return (
       <HealthCanvas wide>

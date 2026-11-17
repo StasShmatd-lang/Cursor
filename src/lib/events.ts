@@ -106,7 +106,7 @@ function blankEvent(id: string, title: string): EventRecord {
     currentRoundId: null,
     ratingOpen: false,
     speechTimer: { totalSec: 300, remainingMs: 300_000, running: false, startedAt: null },
-    ratingTimer: { totalSec: 120, remainingMs: 120_000, running: false, startedAt: null },
+    ratingTimer: { totalSec: 30, remainingMs: 30_000, running: false, startedAt: null },
   };
 }
 
@@ -360,9 +360,7 @@ function publicEvent(ev: EventRecord, role: Role, now: number) {
       .sort((a, b) => b.totalScore - a.totalScore)
       .map((participant, index) => ({ rank: index + 1, ...participant }));
     const ratingsBreakdown =
-      current && !ev.ratingOpen && (current.ratings?.length ?? 0) > 0
-        ? buildRatingsBreakdown(current)
-        : null;
+      current && (current.ratings?.length ?? 0) > 0 ? buildRatingsBreakdown(current) : null;
     return {
       id: ev.id,
       title: ev.title,
@@ -556,11 +554,11 @@ export async function hostAction(id: string, hostKey: string, body: Record<strin
       const speech = Number(body.speechSec);
       const rating = Number(body.ratingSec);
       if (Number.isFinite(speech) && speech > 0) {
-        ev.speechTimer.totalSec = Math.max(30, Math.min(3 * 60 * 60, Math.round(speech)));
+        ev.speechTimer.totalSec = Math.max(10, Math.min(3 * 60 * 60, Math.round(speech)));
         if (!ev.speechTimer.running) ev.speechTimer.remainingMs = ev.speechTimer.totalSec * 1000;
       }
       if (Number.isFinite(rating) && rating > 0) {
-        ev.ratingTimer.totalSec = Math.max(15, Math.min(2 * 60 * 60, Math.round(rating)));
+        ev.ratingTimer.totalSec = Math.max(5, Math.min(2 * 60 * 60, Math.round(rating)));
         if (!ev.ratingTimer.running) ev.ratingTimer.remainingMs = ev.ratingTimer.totalSec * 1000;
       }
       return null;
