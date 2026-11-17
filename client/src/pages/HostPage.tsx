@@ -407,7 +407,16 @@ export function HostPage() {
           <HealthCard className="w-full max-w-xl space-y-6 text-center">
             <div>
               <p className="health-section-label mb-3">Жюри (телефон)</p>
-              <QRCodeSVG value={guestUrl} size={168} level="M" className="mx-auto rounded-[var(--health-radius)]" />
+              <div className="mx-auto inline-block bg-white p-3">
+                <QRCodeSVG
+                  value={guestUrl}
+                  size={168}
+                  level="M"
+                  marginSize={2}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
+              </div>
               <p className="text-footnote mt-4 break-all text-health-muted">{guestUrl}</p>
             </div>
             <div className="health-divider pt-6 text-left">

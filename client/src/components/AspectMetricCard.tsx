@@ -35,19 +35,16 @@ export function AspectMetricCard({ aspect, compact, large }: Props) {
   }
 
   return (
-    <div className={`health-card-inset ${compact ? "p-2" : ""}`}>
-      <p className="text-footnote mb-2 font-semibold uppercase tracking-wide" style={{ color: aspect.color }}>
+    <div className={`health-card-inset min-w-0 ${compact ? "px-2 py-2" : ""}`}>
+      <p className="text-footnote mb-1 text-center font-semibold uppercase tracking-wide" style={{ color: aspect.color }}>
         {aspect.title}
       </p>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-metric-md" style={{ color: aspect.color }}>
-          {formatScore(aspect.average)}
-        </p>
+      <div className="flex justify-center">
         <ScoreRing
           value={aspect.average}
           color={aspect.color}
-          size={compact ? 72 : 88}
-          stroke={4}
+          size={compact ? 58 : 88}
+          stroke={compact ? 3 : 4}
         />
       </div>
     </div>
