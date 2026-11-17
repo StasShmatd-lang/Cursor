@@ -1,5 +1,8 @@
+import logo from "../../public/brand/logo-shmidt.png";
+
 const INSTAGRAM_URL =
   "https://www.instagram.com/st.shmidt?mdxt=emx1MzR3dmN0MmZx&utm_source=qr";
+const logoSrc = typeof logo === "string" ? logo : logo.src;
 
 export function BrandFooter() {
   return (
@@ -12,7 +15,7 @@ export function BrandFooter() {
         aria-label="Instagram: instagram.com/st.shmidt"
       >
         <img
-          src="/brand/logo-shmidt.png"
+          src={logoSrc}
           alt=""
           className="health-brand-logo"
           width={120}
