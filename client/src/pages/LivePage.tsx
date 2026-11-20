@@ -3,6 +3,7 @@ import type { EventStateScreen } from "../types";
 import { useEventSocket } from "../hooks/useEventSocket";
 import { HealthCanvas } from "../ui/HealthLayout";
 import { BroadcastView } from "../components/BroadcastView";
+import { FullscreenButton } from "../components/FullscreenButton";
 
 export function LivePage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -27,6 +28,7 @@ export function LivePage() {
   return (
     <HealthCanvas stage>
       <BroadcastView ev={ev} />
+      <FullscreenButton />
     </HealthCanvas>
   );
 }
